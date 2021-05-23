@@ -33,6 +33,10 @@
     wait: true
     group: "{{ sg_name }}"
     count: 1
+    # exact_count: 1
+    #count_tag: 
+    #  Name: "{{ item }}" 
+
     # vpc_subnet_id: "{{ subnet_name }}"
     # assign_public_ip: yes
     region: "{{ region_name }}"
