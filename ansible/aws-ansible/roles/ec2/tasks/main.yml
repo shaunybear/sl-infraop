@@ -1,72 +1,55 @@
 ---
-# tasks file for ec2
-- name: Installing pip3 
-  apt: name=python3-pip state=present
-  tags: python
 
-- name: Installing boto & boto3 on local system
-  pip:
-    name: "{{ item }}"
-    state: present
-  loop: "{{ python_pkgs }}"
-
-- name: Creating Security Group for K8s Cluster
+- name: Create k8s master security group 
   ec2_group:
-    name: "{{ sg_name }}"
-    description: Security Group for allowing all port
+    name: k8s-master-sg 
     region: "{{ region_name }}"
-    aws_access_key: "{{ access_key }}"
-    aws_secret_key: "{{ secret_key }}"
-    security_token: "{{ security_token }}"
+    description: k8s master sg 
+    state: present
     rules:
     - proto: all
-      cidr_ip: 0.0.0.0/0
+      cidr_ip: 0.0.0.0/0 
     rules_egress:
     - proto: all
       cidr_ip: 0.0.0.0/0
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ security_token }}"
 
-- name: Launching three EC2 instances on AWS
+- name: Start k8s master 
   ec2:
     key_name: "{{ keypair }}"
     instance_type: "{{ instance_flavour }}"
     image: "{{ ami_id }}"
-    wait: true
-    group: "{{ sg_name }}"
-    count: 1
-    # exact_count: 1
-    #count_tag: 
-    #  Name: "{{ item }}" 
-
-    # vpc_subnet_id: "{{ subnet_name }}"
-    # assign_public_ip: yes
+    wait: yes
+    instance_tags:
+      Name: k8smaster 
+      name: k8smaster 
     region: "{{ region_name }}"
-    state: present
+    exact_count: 1
+    count_tag:  
+      name: k8smaster 
+    group: k8s-master-sg 
     aws_access_key: "{{ access_key }}"
     aws_secret_key: "{{ secret_key }}"
     security_token: "{{ security_token }}"
-    instance_tags:
-      Name: "{{ item }}"
-  register: ec2
-  loop: "{{ instance_tag }}"
+  register: ec2_k8s_master
 
-- name: Add 1st instance to host group ec2_master
+- name: Allocate master elastic IP 
+  ec2_eip:
+    device_id: "{{ ec2_k8s_master.tagged_instances[0].id }}"
+    region: "{{ region_name }}"
+    in_vpc: yes
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ security_token }}"
+  register: eip
+
+- name: output the IP
+  debug:
+    var: eip 
+
+- name: Add master to k8s_master group
   add_host:
-    hostname: "{{ ec2.results[0].instances[0].public_ip }}"
-    groupname: ec2_master
-
-- name: Add 2nd instance to host group ec2_slave
-  add_host:
-    hostname: "{{ ec2.results[1].instances[0].public_ip }}"
-    groupname: ec2_slave
-
-- name: Add 3rd instance to host group ec2_slave
-  add_host:
-    hostname: "{{ ec2.results[2].instances[0].public_ip }}"
-    groupname: ec2_slave
-
-- name: Wait for SSH to come up
-  wait_for:
-    host: "{{ ec2.results[2].instances[0].public_dns_name }}"
-    port: 22
-    state: started
-
+    hostname: "{{ ec2_k8s_master.tagged_instances[0].public_ip }}"
+    groupname: k8s_master
