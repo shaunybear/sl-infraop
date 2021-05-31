@@ -1,16 +1,23 @@
 ---
 
-- name: Create k8s master security group 
+- name: Create webserver security group 
   ec2_group:
-    name: k8s-master-sg 
+    name: webservers 
     region: "{{ region_name }}"
-    description: k8s master sg 
+    description: webserver security group
     state: present
     rules:
-    - proto: all
-      cidr_ip: 0.0.0.0/0 
+    - proto: tcp
+      from_port: 80 
+      to_port: 80
+      cidr_ip: 0.0.0.0/0
+    - proto: tcp
+      from_port: 22
+      to_port: 22
+      cidr_ip: 0.0.0.0/0
     rules_egress:
-    - proto: all
+    - proto: 80
+      to_port: 80
       cidr_ip: 0.0.0.0/0
     aws_access_key: "{{ access_key }}"
     aws_secret_key: "{{ secret_key }}"
@@ -29,27 +36,28 @@
     exact_count: 1
     count_tag:  
       name: k8smaster 
-    group: k8s-master-sg 
+    group: webservers 
     aws_access_key: "{{ access_key }}"
     aws_secret_key: "{{ secret_key }}"
     security_token: "{{ security_token }}"
   register: ec2_k8s_master
 
-- name: Allocate master elastic IP 
+- name: debug ec2_k8s_master
+  debug: var=ec2_k8s_master
+
+- name: Set k8s master elastic ip 
   ec2_eip:
-    device_id: "{{ ec2_k8s_master.tagged_instances[0].id }}"
     region: "{{ region_name }}"
     in_vpc: yes
+    reuse_existing_ip_allowed: yes
+    state: present
+    device_id: "{{ ec2_k8s_master.tagged_instances[0].id }}"
     aws_access_key: "{{ access_key }}"
     aws_secret_key: "{{ secret_key }}"
     security_token: "{{ security_token }}"
   register: eip
 
-- name: output the IP
-  debug:
-    var: eip 
-
-- name: Add master to k8s_master group
+- name: Add master to k8s_master group 
   add_host:
     hostname: "{{ ec2_k8s_master.tagged_instances[0].public_ip }}"
     groupname: k8s_master
