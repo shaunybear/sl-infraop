@@ -1,0 +1,10 @@
+
+hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Running K8s Slave Role
+      include_role:
+        name: k8s_slave
+      tags:
+       - k8s
+

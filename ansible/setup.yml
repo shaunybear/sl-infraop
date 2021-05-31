@@ -6,6 +6,8 @@
     - name: Running EC2 Role
       include_role:
         name: ec2
+      tags:
+       - ec2
 
 - hosts: ec2_master
   gather_facts: no
@@ -13,6 +15,8 @@
     - name: Running K8s Master Role
       include_role:
         name: k8s_master
+      tags:
+       - k8s
 
 - hosts: ec2_slave
   gather_facts: no
@@ -20,3 +24,5 @@
     - name: Running K8s Slave Role
       include_role:
         name: k8s_slave
+      tags:
+       - k8s

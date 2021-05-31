@@ -1,0 +1,77 @@
+---
+
+- name: Add  EC2 kuster  master 
+  ec2:
+    key_name: "{{ keypair }}"
+    instance_type: "{{ instance_flavour }}"
+    image: "{{ ami_id }}"
+    wait: yes
+    instance_tags:
+      Name: k8smaster 
+      name: k8smaster 
+    region: "{{ region_name }}"
+    exact_count: 1
+    count_tag:  
+      name: k8smaster 
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ security_token }}"
+  register: ec2_k8s_master
+
+- name: Allocate master elastic IP 
+  ec2_eip:
+    device_id: "{{ ec2_k8s_master.tagged_instances[0].id }}"
+    region: "{{ region_name }}"
+    in_vpc: yes
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ security_token }}"
+  register: eip
+
+- name: output the IP
+  debug:
+    var: eip 
+
+- name: Add master to k8s_master group
+  add_host:
+    hostname: "{{ ec2_k8s_master.tagged_instances[0].public_ip }}"
+    groupname: k8s_master
+
+- name: Create EC2 Load balancer 
+  ec2_elb_lb:
+    name: webserver-load-balancer
+    state: present
+    region: "{{ region_name }}"
+    zones:
+      - us-east-1a
+      - us-east-1b
+    listeners:
+      - protocol: http
+        load_balancer_port: 80
+        instance_port: 80
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ security_token }}"
+  register: elb
+
+
+- name: Add EC2 frontend instances
+  ec2:
+    key_name: "{{ keypair }}"
+    instance_type: "{{ instance_flavour }}"
+    image: "{{ ami_id }}"
+    assign_public_ip: no
+    wait: yes
+    instance_tags:
+      Name: "{{ item }}" 
+      name: "{{ item }}"
+    region: "{{ region_name }}"
+    exact_count: 1
+    count_tag:  
+      Name: "{{ item }} "
+      name: "{{ item }} " 
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ security_token }}"
+  loop:
+    - webserver-1
