@@ -1,0 +1,26 @@
+- hosts: localhost
+  gather_facts: no
+  vars_files:
+        - cred.yml
+  tasks:
+    - name: Running Cluster EC2 Role
+      include_role:
+        name: ec2
+      tags:  ec2 
+
+
+- hosts: master
+  gather_facts: no
+  tasks:
+    - name: Running Kubernetes Master Role
+      include_role:
+        name: master
+      tags: master
+
+- hosts: workers
+  gather_facts: no
+  tasks:
+    - name: Running Kubernetes Worker  Role
+      include_role:
+        name: worker
+      tags: worker

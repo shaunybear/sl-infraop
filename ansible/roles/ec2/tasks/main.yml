@@ -1,26 +1,50 @@
 ---
 
-- name: Add  EC2 kuster  master 
+- name: Create EC2 Security Group 
+  ec2_group:
+    name: "{{ sg_name }}" 
+    region: "{{ region_name }}"
+    description: cluster security group
+    state: present
+    rules:
+    - proto: tcp
+      from_port: 80 
+      to_port: 80
+      cidr_ip: 0.0.0.0/0
+    - proto: tcp
+      from_port: 22
+      to_port: 22
+      cidr_ip: 0.0.0.0/0
+    - proto: tcp
+      from_port: 6443
+      to_port: 6443
+      cidr_ip: 0.0.0.0/0
+    aws_access_key: "{{ access_key }}"
+    aws_secret_key: "{{ secret_key }}"
+    security_token: "{{ security_token }}"
+
+- name: Add EC2 Cluster Master 
   ec2:
     key_name: "{{ keypair }}"
     instance_type: "{{ instance_flavour }}"
     image: "{{ ami_id }}"
     wait: yes
     instance_tags:
-      Name: k8smaster 
-      name: k8smaster 
+      Name: master 
     region: "{{ region_name }}"
-    exact_count: 1
+    group: "{{ sg_name }}"
     count_tag:  
-      name: k8smaster 
+      Name: master 
+    exact_count: 1
     aws_access_key: "{{ access_key }}"
     aws_secret_key: "{{ secret_key }}"
     security_token: "{{ security_token }}"
-  register: ec2_k8s_master
+  register: master
 
-- name: Allocate master elastic IP 
+- name: Allocate Master Elastic IP 
   ec2_eip:
-    device_id: "{{ ec2_k8s_master.tagged_instances[0].id }}"
+    state: present
+    device_id: "{{ master.tagged_instances[0].id }}"
     region: "{{ region_name }}"
     in_vpc: yes
     aws_access_key: "{{ access_key }}"
@@ -28,23 +52,21 @@
     security_token: "{{ security_token }}"
   register: eip
 
-- name: output the IP
+- name: Show Master Elastic IP
   debug:
     var: eip 
 
-- name: Add master to k8s_master group
+- name: Add master to master group
   add_host:
-    hostname: "{{ ec2_k8s_master.tagged_instances[0].public_ip }}"
-    groupname: k8s_master
+    hostname: "{{ eip.public_ip }}"
+    groupname: master
 
-- name: Create EC2 Load balancer 
+- name: Create EC2 Load Balancer 
   ec2_elb_lb:
-    name: webserver-load-balancer
+    name: app-load-balancer
     state: present
     region: "{{ region_name }}"
-    zones:
-      - us-east-1a
-      - us-east-1b
+    zones: "{{ region_zones }}"
     listeners:
       - protocol: http
         load_balancer_port: 80
@@ -54,24 +76,32 @@
     security_token: "{{ security_token }}"
   register: elb
 
-
-- name: Add EC2 frontend instances
+- name: Add EC2 Cluster Worker Nodes
   ec2:
     key_name: "{{ keypair }}"
     instance_type: "{{ instance_flavour }}"
     image: "{{ ami_id }}"
-    assign_public_ip: no
     wait: yes
     instance_tags:
-      Name: "{{ item }}" 
-      name: "{{ item }}"
+      Name: "worker-{{ item }}" 
     region: "{{ region_name }}"
-    exact_count: 1
+    group: "{{ sg_name }}"
     count_tag:  
-      Name: "{{ item }} "
-      name: "{{ item }} " 
+      Name: "worker-{{ item }}" 
+    exact_count: 1
     aws_access_key: "{{ access_key }}"
     aws_secret_key: "{{ secret_key }}"
     security_token: "{{ security_token }}"
-  loop:
-    - webserver-1
+  with_items: ['1', '2']
+  register: ec2_workers
+
+- name: Show workers 
+  debug:
+    var: ec2_workers 
+
+- name: Add Cluster Worker Nodes to Worker Group
+  add_host:
+    groupname: workers
+    hostname: "{{ item.tagged_instances[0].public_ip }}"
+  with_items: "{{ ec2_workers.results }}"  
+

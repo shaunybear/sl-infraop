@@ -1,12 +1,11 @@
 ---
 # vars file for ec2
-python_pkgs:
-  - boto
-  - boto3
 
-sg_name: webservers 
+sg_name: EasyPayWeb 
 region_name: us-east-1
+region_zones: [us-east-1a, us-east-1b]
 subnet_name: subnet-6dfdc705
 ami_id: ami-0d5eff06f840b45e9
 keypair: ansible
 instance_flavour: t2.micro
+
