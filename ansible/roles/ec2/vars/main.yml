@@ -1,11 +1,38 @@
 ---
 # vars file for ec2
 
-sg_name: EasyPayWeb 
+# VPC
+vpc_name: "Cluster VPC"
+vpc_cidr: 10.10.0.0/24
+
+# Subnet
+subnet_name: "Cluster Subnet"
+subnet_cidr: 10.10.0.0/26
+
+# Internet Gateway Name
+igw_name: "Cluster IGW"
+
+# Security group
+sg_name: "Cluster Web DMZ" 
+
+# keypair 
+ec2_keypair_name: ec2_keypair
+ec2_keypair_destination: "./ec2_keypair.pem"
+ec2_keypair_owner: snelson
+
+# Load balancer
+lb_name: ec2-lb
+
+# Region 
 region_name: us-east-1
 region_zones: [us-east-1a, us-east-1b]
-subnet_name: subnet-6dfdc705
-ami_id: ami-0d5eff06f840b45e9
+
+# subnet_name: subnet-6dfdc705
+
+# EC2 keypair
 keypair: ansible
+
+# EC2 instance and image type 
+ami_id: ami-0d5eff06f840b45e9
 instance_flavour: t2.micro
 

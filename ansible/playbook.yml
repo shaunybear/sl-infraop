@@ -1,7 +1,6 @@
 - hosts: localhost
   gather_facts: no
-  vars_files:
-        - cred.yml
+
   tasks:
     - name: Running Cluster EC2 Role
       include_role:
