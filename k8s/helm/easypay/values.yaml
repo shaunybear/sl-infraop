@@ -1,6 +1,11 @@
+# Database Service
 dbPortName: mysql
 dbPort : 3306
 
+# Frontend
+frontEndNodePort: 30036
+
+# HPA Values
 minReplicas : 2
 maxReplicas : 10
 hpaCPUUtilizationPercentage: 50
