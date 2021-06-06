@@ -1,40 +1,11 @@
 ---
 
-- name: Delete EC2 private key on AWS
-  ec2_key:
-    name: "{{ ec2_keypair_name }}"
-    state: absent
-    region: "{{ region_name }}"
-    aws_access_key: "{{ access_key }}"
-    aws_secret_key: "{{ secret_key }}"
-    security_token: "{{ security_token }}"
-  register: keypair
-
-- name: Create EC2 private key 
-  ec2_key:
-    name: "{{ ec2_keypair_name }}"
-    region: "{{ region_name }}"
-    aws_access_key: "{{ access_key }}"
-    aws_secret_key: "{{ secret_key }}"
-    security_token: "{{ security_token }}"
-  register: keypair
-
-- name: Save EC2 private key 
-  become: false
-  copy: 
-    content: "{{ keypair.key.private_key }}" 
-    dest: "{{ ec2_keypair_name }}"
-    mode: 0600
-
 - name: Create EC2 VPC 
   ec2_vpc_net:
     name: "{{ vpc_name }}"
     cidr_block: "{{ vpc_cidr }}"
     region: "{{ region_name }}"
     state: present
-    aws_access_key: "{{ access_key }}"
-    aws_secret_key: "{{ secret_key }}"
-    security_token: "{{ security_token }}"
   register: create_vpc
 
 - name: Set vpc_id
@@ -51,9 +22,6 @@
     map_public: yes
     resource_tags:
       Name: "{{ subnet_name }}"
-    aws_access_key: "{{ access_key }}"
-    aws_secret_key: "{{ secret_key }}"
-    security_token: "{{ security_token }}"
   register: create_subnet
 
 - name: Set vpc_subnet_id
@@ -67,9 +35,6 @@
     region: "{{ region_name }}"
     tags:
       Name: "{{ igw_name }}"
-    aws_access_key: "{{ access_key }}"
-    aws_secret_key: "{{ secret_key }}"
-    security_token: "{{ security_token }}"
   register: igw
 
 - name: Route IGW
@@ -83,9 +48,6 @@
         gateway_id: "{{ igw.gateway_id }}"
     tags:
       Name: "Route IGW" 
-    aws_access_key: "{{ access_key }}"
-    aws_secret_key: "{{ secret_key }}"
-    security_token: "{{ security_token }}"
 
 - name: Create EC2 Security Group 
   ec2_group:
@@ -95,6 +57,8 @@
     region: "{{ region_name }}"
     state: present
     rules:
+    - proto: all
+      group_name: "{{ sg_name }}"
     - proto: tcp
       from_port: 80 
       to_port: 80
@@ -103,13 +67,6 @@
       from_port: 22
       to_port: 22
       cidr_ip: 0.0.0.0/0
-    - proto: tcp
-      from_port: 6443
-      to_port: 6443
-      cidr_ip: 0.0.0.0/0
-    aws_access_key: "{{ access_key }}"
-    aws_secret_key: "{{ secret_key }}"
-    security_token: "{{ security_token }}"
   register: security_group
 
 - name: Set Security Group Id
@@ -130,9 +87,6 @@
     count_tag:  
       Name: master 
     exact_count: 1
-    aws_access_key: "{{ access_key }}"
-    aws_secret_key: "{{ secret_key }}"
-    security_token: "{{ security_token }}"
   register: master
 
 - name: Allocate Master Elastic IP 
@@ -141,9 +95,7 @@
     device_id: "{{ master.tagged_instances[0].id }}"
     region: "{{ region_name }}"
     in_vpc: yes
-    aws_access_key: "{{ access_key }}"
-    aws_secret_key: "{{ secret_key }}"
-    security_token: "{{ security_token }}"
+    reuse_existing_ip_allowed: yes
   register: eip
 
 
@@ -167,9 +119,6 @@
     count_tag:  
       Name: "worker-{{ item }}" 
     exact_count: 1
-    aws_access_key: "{{ access_key }}"
-    aws_secret_key: "{{ secret_key }}"
-    security_token: "{{ security_token }}"
   with_items: ['1', '2']
   register: ec2_workers
 
@@ -195,25 +144,19 @@
     security_group_names: "{{ sg_name }}"
     health_check:
             ping_protocol: http
-            ping_port: "{{ cluster_node_port }}"
+            ping_port: "{{ lb_cluster_frontend_port }}"
             ping_path: "/"
             response_timeout: 5
             interval: 30
             unhealthy_threshold: 2
             healthy_threshold: 2
-    aws_access_key: "{{ access_key }}"
-    aws_secret_key: "{{ secret_key }}"
-    security_token: "{{ security_token }}"
   register: elb
 
 - name: Add servers to Load Balancer 
   ec2_elb:
     state: present
-    instance_id: "{{ item.id }}"
+    instance_id: "{{ item.tagged_instances[0].id }}"
     ec2_elbs: "{{ lb_name }}"
     region: "{{ region_name }}"
-    aws_access_key: "{{ access_key }}"
-    aws_secret_key: "{{ secret_key }}"
-    security_token: "{{ security_token }}"
     wait: no
-  with_items: "{{ ec2_workers.results[0].tagged_instances }}"  
+  with_items: "{{ ec2_workers.results}}"  

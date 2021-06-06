@@ -1,11 +1,14 @@
 - hosts: localhost
   gather_facts: no
+  environment:
+    AWS_ACCESS_KEY: "{{access_key}}"
+    AWS_SECRET_KEY: "{{secret_key}}"
+    SECURITY_TOKEN: "{{security_token}}"
 
   tasks:
     - name: Running Cluster EC2 Role
       include_role:
         name: ec2
-      tags:  ec2 
 
 
 - hosts: master
@@ -14,7 +17,6 @@
     - name: Running Kubernetes Master Role
       include_role:
         name: master
-      tags: master
 
 - hosts: workers
   gather_facts: no
@@ -22,4 +24,3 @@
     - name: Running Kubernetes Worker  Role
       include_role:
         name: worker
-      tags: worker
