@@ -190,12 +190,12 @@
     listeners:
       - protocol: http
         load_balancer_port: 80
-        instance_port: 80
+        instance_port: "{{lb_cluster_frontend_port}}"
     scheme: internet-facing
     security_group_names: "{{ sg_name }}"
     health_check:
             ping_protocol: http
-            ping_port: 80
+            ping_port: "{{ cluster_node_port }}"
             ping_path: "/"
             response_timeout: 5
             interval: 30

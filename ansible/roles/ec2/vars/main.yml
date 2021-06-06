@@ -23,6 +23,9 @@ ec2_keypair_owner: snelson
 # Load balancer
 lb_name: ec2-lb
 
+# The cluster node port exposing the front end service
+lb_cluster_frontend_port: 30036
+
 # Region 
 region_name: us-east-1
 region_zones: [us-east-1a, us-east-1b]
@@ -30,9 +33,11 @@ region_zones: [us-east-1a, us-east-1b]
 # subnet_name: subnet-6dfdc705
 
 # EC2 keypair
-keypair: ansible
+keypair: ec2_keypair
 
 # EC2 instance and image type 
 ami_id: ami-0d5eff06f840b45e9
 instance_flavour: t2.micro
+
+
 
